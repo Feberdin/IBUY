@@ -24,6 +24,9 @@ How to debug:
 local ADDON_NAME = ...
 local IBUY = {}
 _G.IBUY = IBUY
+local VIDEO_URL = "https://www.youtube.com/watch?v=cEU4pawG93Q"
+local DEFAULT_FINISH_MESSAGE = "Wenn jemand wisschen moechte wie ich heile, hier das Video: " .. VIDEO_URL
+local HEFTIG_SOUND_PATH = "Interface\\AddOns\\IBUY\\sounds\\heftig.ogg"
 
 local DEFAULTS = {
     enabled = false,
@@ -36,6 +39,8 @@ local DEFAULTS = {
     debug = false,
     persistDebugLog = false,
     debugLogMaxEntries = 2000,
+    instanceFinishMessageEnabled = true,
+    instanceFinishMessage = DEFAULT_FINISH_MESSAGE,
     watchOrder = { 16224 },
 }
 
@@ -51,6 +56,7 @@ local STATE = {
     reopenKeepEnabled = false,
     filteredVendorPage = 1,
     filteredVendorUI = nil,
+    lastFinishMessageAt = 0,
 }
 
 local eventFrame = CreateFrame("Frame")
@@ -79,6 +85,48 @@ local function Debug(msg)
     if IBUY_DB and IBUY_DB.debug then
         DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99[IBUY]|r |cff9999ffDEBUG|r " .. tostring(msg))
         PersistLog("DEBUG", msg)
+    end
+end
+
+local function PlayHeftigSound()
+    local ok = PlaySoundFile(HEFTIG_SOUND_PATH, "Master")
+    if not ok then
+        Log("HEFTIG-Sound nicht gefunden.")
+        Log("Lege eine Datei ab unter: " .. HEFTIG_SOUND_PATH)
+        return false
+    end
+    return true
+end
+
+local function SendInstanceFinishMessage()
+    if not IBUY_DB.instanceFinishMessageEnabled then
+        return
+    end
+    local text = IBUY_DB.instanceFinishMessage or DEFAULT_FINISH_MESSAGE
+    if text == "" then
+        return
+    end
+
+    local now = GetTime()
+    if (now - STATE.lastFinishMessageAt) < 15 then
+        return
+    end
+    STATE.lastFinishMessageAt = now
+
+    local channel = nil
+    if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+        channel = "INSTANCE_CHAT"
+    elseif IsInRaid() then
+        channel = "RAID"
+    elseif IsInGroup() then
+        channel = "PARTY"
+    end
+
+    if channel then
+        SendChatMessage(text, channel)
+        Debug("Instanz-Text gesendet in " .. channel)
+    else
+        Log(text)
     end
 end
 
@@ -714,6 +762,17 @@ local function CreateMerchantUI()
         SetEnabled(not IBUY_DB.enabled)
     end)
 
+    local heftigBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    heftigBtn:SetSize(80, 22)
+    heftigBtn:SetPoint("LEFT", toggleBtn, "RIGHT", 8, 0)
+    heftigBtn:SetText("HEFTIG")
+    heftigBtn:SetScript("OnClick", function()
+        local ok = PlayHeftigSound()
+        if ok then
+            Log("HEFTIG!")
+        end
+    end)
+
     local testModeCheck = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
     testModeCheck:SetPoint("TOPLEFT", toggleBtn, "BOTTOMLEFT", -2, -8)
     local testModeLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -888,6 +947,9 @@ local function PrintHelp()
     Log("/ibuy list - Konfiguration anzeigen")
     Log("/ibuy test on|off - Testmodus umschalten")
     Log("/ibuy debug on|off - Debug-Logs umschalten")
+    Log("/ibuy postvideo - Postet den Video-Text in Gruppe/Instanz")
+    Log("/ibuy heftig - Spielt das EasterEgg-Soundfile ab")
+    Log("/ibuy finishmsg on|off - Auto-Nachricht bei Instanzabschluss")
     Log("/ibuy logfile on|off - Persistente Debug-Datei aktivieren/deaktivieren")
     Log("/ibuy logclear - Persistente Debug-Datei leeren")
     Log("/ibuy logtail <n> - Letzte n Zeilen in den Chat ausgeben")
@@ -901,6 +963,7 @@ local function ListConfig()
         tostring(IBUY_DB.autoRefresh), tostring(IBUY_DB.onlyShowTargets)))
     Log(string.format("Debug-Datei: %s | Log-Eintraege: %d",
         tostring(IBUY_DB.persistDebugLog), #(IBUY_DB.debugLog or {})))
+    Log(string.format("Instanz-Abschlussnachricht: %s", tostring(IBUY_DB.instanceFinishMessageEnabled)))
     if #IBUY_DB.watchOrder == 0 then
         Log("Keine Zielitems konfiguriert.")
         return
@@ -974,6 +1037,27 @@ local function HandleSlash(msg)
             return
         end
         Log("Verwendung: /ibuy debug on|off")
+        return
+    end
+    if cmd == "postvideo" then
+        SendInstanceFinishMessage()
+        return
+    end
+    if cmd == "heftig" then
+        PlayHeftigSound()
+        return
+    end
+    if cmd == "finishmsg" then
+        if arg1 == "on" then
+            IBUY_DB.instanceFinishMessageEnabled = true
+            Log("Instanz-Abschlussnachricht aktiviert.")
+            return
+        elseif arg1 == "off" then
+            IBUY_DB.instanceFinishMessageEnabled = false
+            Log("Instanz-Abschlussnachricht deaktiviert.")
+            return
+        end
+        Log("Verwendung: /ibuy finishmsg on|off")
         return
     end
     if cmd == "logfile" then
@@ -1071,12 +1155,19 @@ local function OnEvent(_, event, ...)
         CloseMerchantFrameState()
         return
     end
+
+    if event == "LFG_COMPLETION_REWARD" or event == "CHALLENGE_MODE_COMPLETED" then
+        SendInstanceFinishMessage()
+        return
+    end
 end
 
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("MERCHANT_SHOW")
 eventFrame:RegisterEvent("MERCHANT_UPDATE")
 eventFrame:RegisterEvent("MERCHANT_CLOSED")
+eventFrame:RegisterEvent("LFG_COMPLETION_REWARD")
+eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 eventFrame:SetScript("OnEvent", OnEvent)
 
 -- Expose selected internals for small runtime self-tests.

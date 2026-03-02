@@ -2,3 +2,4 @@
 *.luac
 *.tmp
 .DS_Store
+release/

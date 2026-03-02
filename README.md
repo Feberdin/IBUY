@@ -1,80 +1,56 @@
 # IBUY
 
-IBUY ist ein kleines World of Warcraft Classic Addon fuer Vendor-Kaeufe mit Prioritaet, Testmodus und optionalem Auto-Refresh.
+Auto-buy selected vendor items in WoW Classic with priority rules, a safe test mode, and practical debug tooling.
+
+## Why IBUY
+Busy vendors are hard to click reliably when many players stand on top of the NPC.
+IBUY keeps checking the merchant list and buys your configured target items as soon as they are available.
 
 ## Features
-- Auto-Kauf fuer eine priorisierte Liste von Item-IDs
-- Testmodus:
-  - erste 2 Kaeufe sind echt
-  - danach nur Log-Ausgabe: "Wuerde kaufen..."
-- Bedienpanel direkt am Vendor-Fenster
-- Gefilterte, tabellarische IBUY-Zielitemliste (irrelevante Vendor-Items werden in der IBUY-Tabelle ausgeblendet)
-- Optional: Linkes Vendorfenster auf deine Zielitems filtern (statt kompletter Blizzard-Liste)
-- Optionaler Auto-Refresh-Versuch durch erneutes Ansprechen des aktuell anvisierten Vendors
+- Priority-based auto-buy for configured item IDs
+- Test mode: first 2 purchases are real, then log-only (`Would buy ...`)
+- Vendor panel UI with start/stop and settings
+- Optional vendor refresh helper
+- Persistent debug log in `SavedVariables`
+- Easter egg support (`HEFTIG` button + custom local sound file)
 
 ## Quickstart
-1. Stelle sicher, dass der Ordner `IBUY` in `Interface/AddOns` liegt.
-2. Spiel starten, Addon aktivieren.
-3. Beim Vendor:
-   - Ziel-ID(s) eintragen (z. B. `16224`)
-   - `IBUY Start` klicken
+1. Install the `IBUY` folder in `Interface/AddOns`.
+2. Start WoW and enable `IBUY`.
+3. Open a vendor and run:
+   - `/ibuy add 16224`
+   - `/ibuy start`
 
-## Konfiguration
-- Standard-Zielitem: `16224`
-- Testmodus ist standardmaessig aktiv.
-- Slash-Befehl: `/ibuy`
-
-### Wichtige Befehle
+## Commands
 - `/ibuy start`
 - `/ibuy stop`
-- `/ibuy add 16224`
-- `/ibuy remove 16224`
+- `/ibuy add <itemID>`
+- `/ibuy remove <itemID>`
 - `/ibuy list`
-- `/ibuy test on`
-- `/ibuy test off`
-- `/ibuy debug on`
-- `/ibuy debug off`
-- `/ibuy logfile on`
-- `/ibuy logfile off`
+- `/ibuy test on|off`
+- `/ibuy debug on|off`
+- `/ibuy logfile on|off`
 - `/ibuy logclear`
-- `/ibuy logtail 30`
+- `/ibuy logtail <n>`
 - `/ibuy logpath`
+- `/ibuy postvideo`
+- `/ibuy finishmsg on|off`
+- `/ibuy heftig`
 - `/ibuy selftest`
 
-## Troubleshooting
-- Problem: Es wird nichts gekauft.
-  - Pruefen:
-    - Vendor-Fenster ist offen
-    - `IBUY Start` aktiv
-    - Item-ID in `/ibuy list` vorhanden
-    - Item ist beim Vendor aktuell verfuegbar
-    - genug Gold vorhanden
-- Problem: Rezept erscheint nicht sofort.
-  - Auto-Refresh im IBUY-Panel aktivieren (ohne Fenster-Loop).
-  - Falls noetig, Button `Vendor neu ansprechen` verwenden und Vendor im Target behalten.
-- Hinweis zur Filterung:
-  - Option `In Tabelle nur aktuell relevante Vendor-Zielitems` filtert links die Vendorliste auf deine Zielitems.
-  - Die rechte IBUY-Tabelle bleibt als vollstaendige Uebersicht deiner Watchlist erhalten.
-- Problem: Zu viele Log-Meldungen.
-  - `/ibuy debug off` setzen.
+## Debug Log
+- Enable: `/ibuy logfile on`
+- Path: `WTF/Account/<ACCOUNT>/SavedVariables/IBUY.lua`
+- Key: `IBUY_DB.debugLog`
+- Note: SavedVariables are written on `/reload`, logout, or game exit.
 
-## Logs und Debug
-- Chat-Prefix: `[IBUY]`
-- Debug aktivieren mit `/ibuy debug on`
-- Persistente Debug-Datei aktivieren mit `/ibuy logfile on`
-- Dateiort: `WTF/Account/<ACCOUNT>/SavedVariables/IBUY.lua` (Schluessel `IBUY_DB.debugLog`)
-- Wichtig: SavedVariables werden bei `/reload`, Logout oder Spielende geschrieben.
+## HEFTIG Sound
+Expected file path:
+- `Interface\\AddOns\\IBUY\\sounds\\heftig.ogg`
 
-## Security / Rechte
-- IBUY speichert nur lokale Addon-Konfiguration in `SavedVariables` (`IBUY_DB`).
-- Keine externen Netzverbindungen.
-- Keine Secrets erforderlich.
+## Project Summary
+- English: see [DESCRIPTION.en.md](DESCRIPTION.en.md)
+- German: see [DESCRIPTION.de.md](DESCRIPTION.de.md)
 
-## Testen
-- Ingame-Test:
-  - Vendor oeffnen
-  - `/ibuy selftest` fuer Kernlogik
-  - Testmodus mit guenstigem Vendor-Item (z. B. Item-ID `27860`) pruefen
-
-## Lizenz-Hinweis
-- Aktuell ohne separate Lizenzdatei. Bei Veroeffentlichung bitte Lizenz ergaenzen (z. B. MIT).
+## License
+MIT (recommended for release).

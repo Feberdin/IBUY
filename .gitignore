@@ -1,0 +1,4 @@
+# Lua bytecode and editor files
+*.luac
+*.tmp
+.DS_Store

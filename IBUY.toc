@@ -1,8 +1,8 @@
-## Interface: 20505
+## Interface: 120001, 20505
 ## Title: IBUY
 ## Notes: Auto-buy selected vendor items with priority and test mode
 ## Author: Feberdin
-## Version: 0.1.0
+## Version: 1.0.1
 ## SavedVariables: IBUY_DB
 
 IBUY.lua

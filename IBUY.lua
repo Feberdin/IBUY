@@ -24,6 +24,7 @@ How to debug:
 local ADDON_NAME = ...
 local IBUY = {}
 _G.IBUY = IBUY
+local IS_RETAIL = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 local VIDEO_URL = "https://www.youtube.com/watch?v=cEU4pawG93Q"
 local DEFAULT_FINISH_MESSAGE = "Wenn jemand wisschen moechte wie ich heile, hier das Video: " .. VIDEO_URL
 local HEFTIG_SOUND_PATH = "Interface\\AddOns\\IBUY\\sounds\\heftig.ogg"
@@ -62,6 +63,25 @@ local STATE = {
 local eventFrame = CreateFrame("Frame")
 local RefreshConfiguredItemsText
 local ShortName
+local RefreshFilteredVendorUI
+
+local function GetRowsPerPage()
+    return tonumber(MERCHANT_ITEMS_PER_PAGE) or 10
+end
+
+local function SafeMerchantFrameUpdate()
+    if type(MerchantFrame_Update) == "function" then
+        MerchantFrame_Update()
+    end
+end
+
+local function IsBuybackTab()
+    if not MerchantFrame then
+        return false
+    end
+    local selectedTab = MerchantFrame.selectedTab or 1
+    return selectedTab ~= 1
+end
 
 local function PersistLog(level, msg)
     if not IBUY_DB or not IBUY_DB.persistDebugLog then
@@ -219,7 +239,7 @@ local function TryRefreshMerchant()
     end
     -- Non-intrusive refresh: keep merchant open and request UI/list refresh.
     -- This avoids constant close/open loops.
-    MerchantFrame_Update()
+    SafeMerchantFrameUpdate()
     RefreshConfiguredItemsText()
 end
 
@@ -262,10 +282,8 @@ local function ApplyMerchantRowFilter()
     if not STATE.merchantOpen then
         return
     end
-    local selectedTab = MerchantFrame and MerchantFrame.selectedTab or nil
-    local onBuybackTab = (selectedTab == 2)
-    local hide = IBUY_DB.onlyShowTargets and (not onBuybackTab)
-    for row = 1, MERCHANT_ITEMS_PER_PAGE do
+    local hide = IBUY_DB.onlyShowTargets and (not IsBuybackTab())
+    for row = 1, GetRowsPerPage() do
         local button = _G["MerchantItem" .. row]
         if button then
             if hide then
@@ -311,9 +329,22 @@ local function EnsureFilteredVendorUI()
     if STATE.filteredVendorUI then
         return
     end
-    local frame = CreateFrame("Frame", "IBUY_FilteredVendorFrame", MerchantFrame)
+    if not MerchantFrame then
+        return
+    end
+    local frame = CreateFrame("Frame", "IBUY_FilteredVendorFrame", MerchantFrame, "BackdropTemplate")
     frame:SetPoint("TOPLEFT", MerchantFrame, "TOPLEFT", 28, -76)
     frame:SetSize(330, 304)
+    frame:SetFrameStrata("HIGH")
+    frame:SetFrameLevel((MerchantFrame:GetFrameLevel() or 1) + 30)
+    frame:SetBackdrop({
+        bgFile = "Interface/Buttons/WHITE8x8",
+        edgeFile = "Interface/Buttons/WHITE8x8",
+        tile = false,
+        edgeSize = 1,
+    })
+    frame:SetBackdropColor(0.03, 0.03, 0.03, 0.96)
+    frame:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
     frame:Hide()
 
     frame.rows = {}
@@ -361,6 +392,11 @@ local function EnsureFilteredVendorUI()
         frame.rows[i] = row
     end
 
+    frame.emptyText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    frame.emptyText:SetPoint("CENTER", frame, "CENTER", 0, 0)
+    frame.emptyText:SetText("Kein Zielitem bei diesem Vendor.")
+    frame.emptyText:Hide()
+
     frame.pageText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.pageText:SetPoint("BOTTOM", MerchantFrame, "BOTTOM", 0, 100)
     frame.pageText:SetText("Seite 1")
@@ -388,39 +424,26 @@ local function EnsureFilteredVendorUI()
     STATE.filteredVendorUI = frame
 end
 
-local function RefreshFilteredVendorUI()
+RefreshFilteredVendorUI = function()
     EnsureFilteredVendorUI()
     local ui = STATE.filteredVendorUI
     if not ui then
         return
     end
 
-    local selectedTab = MerchantFrame and MerchantFrame.selectedTab or nil
-    local onBuybackTab = (selectedTab == 2)
-    if not (STATE.merchantOpen and IBUY_DB.onlyShowTargets and (not onBuybackTab)) then
+    if not (STATE.merchantOpen and IBUY_DB.onlyShowTargets and (not IsBuybackTab())) then
         ui:Hide()
         ui.prevBtn:Hide()
         ui.nextBtn:Hide()
         ui.pageText:Hide()
+        if ui.emptyText then
+            ui.emptyText:Hide()
+        end
         return
     end
 
     local entries = BuildFilteredVendorEntries()
-    Debug(string.format("Filterliste: %d Vendor-Zielitems gefunden (tab=%s)", #entries, tostring(selectedTab)))
-    if #entries == 0 then
-        -- No matching target item currently sold by this vendor: do not blank the merchant window.
-        IBUY_DB.onlyShowTargets = false
-        if STATE.ui and STATE.ui.onlyTargetsCheck then
-            STATE.ui.onlyTargetsCheck:SetChecked(false)
-        end
-        Log("Kein Zielitem bei diesem Vendor sichtbar. Filter wurde deaktiviert.")
-        ApplyMerchantRowFilter()
-        ui:Hide()
-        ui.prevBtn:Hide()
-        ui.nextBtn:Hide()
-        ui.pageText:Hide()
-        return
-    end
+    Debug(string.format("Filterliste: %d Vendor-Zielitems gefunden", #entries))
     local perPage = 10
     local totalPages = math.max(1, math.ceil(#entries / perPage))
     if STATE.filteredVendorPage > totalPages then
@@ -447,7 +470,13 @@ local function RefreshFilteredVendorUI()
         end
     end
 
-    ui.pageText:SetText(string.format("Seite %d/%d", STATE.filteredVendorPage, totalPages))
+    if #entries == 0 then
+        if ui.emptyText then ui.emptyText:Show() end
+        ui.pageText:SetText("Seite 1/1")
+    else
+        if ui.emptyText then ui.emptyText:Hide() end
+        ui.pageText:SetText(string.format("Seite %d/%d", STATE.filteredVendorPage, totalPages))
+    end
     ui.prevBtn:SetEnabled(STATE.filteredVendorPage > 1)
     ui.nextBtn:SetEnabled(STATE.filteredVendorPage < totalPages)
 
@@ -788,18 +817,21 @@ local function CreateMerchantUI()
     onlyTargetsCheck:SetPoint("TOPLEFT", testModeCheck, "BOTTOMLEFT", 0, -4)
     local onlyTargetsLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     onlyTargetsLabel:SetPoint("LEFT", onlyTargetsCheck, "RIGHT", 2, 1)
-    onlyTargetsLabel:SetText("Vendor-Filter (BETA, aktuell nicht stabil)")
+    if IS_RETAIL then
+        onlyTargetsLabel:SetText("Nur Zielitems links anzeigen (Retail + Classic)")
+    else
+        onlyTargetsLabel:SetText("Nur Zielitems links anzeigen")
+    end
     onlyTargetsCheck:SetScript("OnClick", function(self)
         IBUY_DB.onlyShowTargets = self:GetChecked() and true or false
-        if IBUY_DB.onlyShowTargets then
-            Log("Hinweis: Vendor-Filter ist BETA und aktuell nicht stabil.")
-        end
         STATE.filteredVendorPage = 1
-        if IBUY_DB.onlyShowTargets and MerchantFrame and MerchantFrame.selectedTab == 2 then
+        if IBUY_DB.onlyShowTargets and MerchantFrame and IsBuybackTab() then
             -- Force switch to merchant buy tab so filtered entries can be shown.
-            PanelTemplates_SetTab(MerchantFrame, 1)
+            if type(PanelTemplates_SetTab) == "function" then
+                PanelTemplates_SetTab(MerchantFrame, 1)
+            end
             MerchantFrame.selectedTab = 1
-            MerchantFrame_Update()
+            SafeMerchantFrameUpdate()
         end
         Debug(string.format("Vendor-Filter gesetzt: onlyShowTargets=%s", tostring(IBUY_DB.onlyShowTargets)))
         ApplyMerchantRowFilter()
@@ -926,6 +958,9 @@ local function CloseMerchantFrameState()
         STATE.filteredVendorUI.prevBtn:Hide()
         STATE.filteredVendorUI.nextBtn:Hide()
         STATE.filteredVendorUI.pageText:Hide()
+        if STATE.filteredVendorUI.emptyText then
+            STATE.filteredVendorUI.emptyText:Hide()
+        end
     end
     if STATE.reopenKeepEnabled then
         -- Manual refresh flow: keep enabled state and restart on MERCHANT_SHOW.
@@ -1124,7 +1159,7 @@ local function OnEvent(_, event, ...)
         IBUY_DB = IBUY_DB or {}
         CopyDefaults(IBUY_DB, DEFAULTS)
         EnsureWatchIndex()
-        if not STATE.hookedMerchantUpdate then
+        if not STATE.hookedMerchantUpdate and type(MerchantFrame_Update) == "function" then
             hooksecurefunc("MerchantFrame_Update", function()
                 if STATE.merchantOpen then
                     ApplyMerchantRowFilter()

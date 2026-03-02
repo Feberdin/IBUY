@@ -2,7 +2,7 @@
 ## Title: IBUY
 ## Notes: Auto-buy selected vendor items with priority and test mode
 ## Author: Feberdin
-## Version: 1.0.1
+## Version: 1.0.2
 ## SavedVariables: IBUY_DB
 
 IBUY.lua

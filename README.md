@@ -54,3 +54,16 @@ Expected file path:
 
 ## License
 MIT (recommended for release).
+
+
+## Configuration and security
+
+Use the slash commands above to change addon behavior. Settings and debug logs
+remain in the local WoW SavedVariables file; the addon requires no API key or
+external service. Do not attach SavedVariables files to public issues without
+reviewing them for character and account identifiers.
+
+## Troubleshooting
+
+Enable `/ibuy debug on` and `/ibuy logfile on`, reproduce the issue, then
+inspect only the latest relevant lines. After changing files, run `/reload`.

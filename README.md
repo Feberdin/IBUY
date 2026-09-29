@@ -1,6 +1,6 @@
 # IBUY
 
-Auto-buy selected vendor items in WoW Classic with priority rules, a safe test mode, and practical debug tooling.
+Auto-buy selected vendor items in WoW Retail and Classic with priority rules, a safe test mode, and practical debug tooling.
 
 ## Why IBUY
 Busy vendors are hard to click reliably when many players stand on top of the NPC.
@@ -13,10 +13,11 @@ IBUY keeps checking the merchant list and buys your configured target items as s
 - Optional vendor refresh helper
 - Persistent debug log in `SavedVariables`
 - Easter egg support (`HEFTIG` button + custom local sound file)
+- Retail + Classic interface support via `IBUY.toc`
 
 ## Quickstart
 1. Install the `IBUY` folder in `Interface/AddOns`.
-2. Start WoW and enable `IBUY`.
+2. Start WoW Retail or WoW Classic and enable `IBUY`.
 3. Open a vendor and run:
    - `/ibuy add 16224`
    - `/ibuy start`

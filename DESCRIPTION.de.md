@@ -1,1 +1,1 @@
-IBUY ist ein WoW-Classic-Addon, das konfigurierte Vendor-Item-IDs automatisch nach Priorität kauft, inklusive sicherem Testmodus, Bedienpanel und dauerhaftem Debug-Logging.
+IBUY ist ein WoW-Retail- und Classic-Addon, das konfigurierte Vendor-Item-IDs automatisch nach Prioritaet kauft, inklusive sicherem Testmodus, Bedienpanel und dauerhaftem Debug-Logging.
